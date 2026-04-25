@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --panino-orange: #f97316;
+    --panino-orange-dark: #c2410c;
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+    font-feature-settings: 'kern' 1;
+  }
+}
+
+@layer components {
+  /* Badges del sistema de libretos */
+  .badge-hook    { @apply text-xs font-medium px-2.5 py-0.5 rounded-full; background:#EEEDFE; color:#3C3489; }
+  .badge-detras  { @apply text-xs font-medium px-2.5 py-0.5 rounded-full; background:#E1F5EE; color:#085041; }
+  .badge-social  { @apply text-xs font-medium px-2.5 py-0.5 rounded-full; background:#FAEEDA; color:#633806; }
+  .badge-producto{ @apply text-xs font-medium px-2.5 py-0.5 rounded-full; background:#FAECE7; color:#712B13; }
+
+  /* Card base */
+  .card {
+    @apply bg-white rounded-xl border border-gray-100 p-4;
+  }
+
+  /* Botón primario Panino */
+  .btn-panino {
+    @apply bg-orange-500 hover:bg-orange-600 text-white font-medium rounded-lg
+           px-4 py-2 text-sm transition-colors disabled:opacity-50;
+  }
+
+  /* Input estándar */
+  .input-base {
+    @apply w-full border border-gray-200 rounded-lg px-3 py-2.5 text-sm
+           focus:outline-none focus:ring-2 focus:ring-orange-400
+           bg-white text-gray-900 placeholder-gray-400;
+  }
+}
