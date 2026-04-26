@@ -25,10 +25,15 @@ export async function createIngredient(payload: Omit<Ingredient, 'id' | 'created
   return data
 }
 
-export async function updateIngredient(id: string, payload: Partial<Omit<Ingredient, 'id' | 'created_at'>>): Promise<Ingredient> {
-  const { data, error } = await supabase.from('ingredients').update(payload).eq('id', id).select().single()
+export async function updateIngredient(
+  id: string,
+  payload: Partial<Omit<Ingredient, 'id' | 'created_at'>>
+): Promise<void> {
+  const { error } = await supabase
+    .from('ingredients')
+    .update(payload)
+    .eq('id', id)
   if (error) throw error
-  return data
 }
 
 export async function deleteIngredient(id: string): Promise<void> {
