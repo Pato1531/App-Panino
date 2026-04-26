@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { Modal } from '@/components/ui/Modal'
-import { updateIngredient } from '@/lib/stock-api'
+import { supabase } from '@/lib/supabase'
 import type { IngredientWithStatus, Unit } from '@/lib/types'
 
 const UNITS: Unit[] = ['kg', 'litro', 'unidad', 'gramo', 'ml']
@@ -27,18 +27,28 @@ export function EditIngredientModal({ ingredient, onClose, onSuccess }: Props) {
     if (!form.name) { setError('El nombre es requerido'); return }
     setLoading(true); setError('')
     try {
-      await updateIngredient(ingredient.id, {
-        name: form.name.trim(),
-        unit: form.unit as Unit,
-        stock_current: parseFloat(form.stock_current) || 0,
-        stock_min: parseFloat(form.stock_min) || 0,
-        cost_unit: parseFloat(form.cost_unit) || 0,
-      })
-      onSuccess(); onClose()
-    } catch (e: any) { setError(e.message) } finally { setLoading(false) }
+      const { error: err } = await supabase
+        .from('ingredients')
+        .update({
+          name: form.name.trim(),
+          unit: form.unit as Unit,
+          stock_current: parseFloat(form.stock_current) || 0,
+          stock_min: parseFloat(form.stock_min) || 0,
+          cost_unit: parseFloat(form.cost_unit) || 0,
+        })
+        .eq('id', ingredient.id)
+
+      if (err) throw err
+      onSuccess()
+      onClose()
+    } catch (e: any) {
+      setError(e.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
-  const set = (key: string, val: string) => setForm(f => ({ ...f, [key]: val }))
+  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   return (
     <Modal title="✏️ Editar Ingrediente" onClose={onClose}>
@@ -58,14 +68,14 @@ export function EditIngredientModal({ ingredient, onClose, onSuccess }: Props) {
 
         <div className="grid grid-cols-3 gap-3">
           {([
-            { key: 'stock_current', label: 'Stock actual' },
-            { key: 'stock_min', label: 'Stock mínimo' },
-            { key: 'cost_unit', label: 'Costo/unidad ($)' },
-          ] as { key: keyof typeof form; label: string }[]).map(({ key, label }) => (
-            <div key={key}>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
+            { k: 'stock_current', l: 'Stock actual' },
+            { k: 'stock_min',     l: 'Stock mínimo' },
+            { k: 'cost_unit',     l: 'Costo/unidad ($)' },
+          ] as { k: keyof typeof form; l: string }[]).map(({ k, l }) => (
+            <div key={k}>
+              <label className="block text-xs font-medium text-gray-600 mb-1">{l}</label>
               <input type="number" min="0" step="0.01" className="input-base"
-                value={form[key]} onChange={e => set(key, e.target.value)} />
+                value={form[k]} onChange={e => set(k, e.target.value)} />
             </div>
           ))}
         </div>
