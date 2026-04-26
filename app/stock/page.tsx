@@ -231,7 +231,7 @@ export default function StockPage() {
       {modal === 'adjust'   && <AdjustModal ingredients={ingredients} onClose={closeModal} onSuccess={() => { load(); showToast('Ajuste aplicado') }} defaultIngredientId={selectedId} />}
       {modal === 'check'    && <CheckModal ingredients={ingredients} onClose={closeModal} onSuccess={() => { load(); showToast('Stock ajustado') }} defaultIngredientId={selectedId} />}
       {modal === 'add'      && <AddIngredientModal onClose={closeModal} onSuccess={() => { load(); showToast('Ingrediente creado') }} />}
-      {modal === 'edit' && editIngredient && <EditIngredientModal ingredient={editIngredient} onClose={closeModal} onSuccess={() => { load(); showToast('Ingrediente actualizado') }} />}
+      {modal === 'edit' && editIngredient && <EditIngredientModal ingredient={editIngredient} onClose={closeModal} onSuccess={async () => { setModal(null); await load(); showToast('Ingrediente actualizado') }} />}
     </>
   )
 }
