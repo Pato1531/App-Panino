@@ -25,15 +25,22 @@ export async function createIngredient(payload: Omit<Ingredient, 'id' | 'created
   return data
 }
 
-export async function updateIngredient(
-  id: string,
-  payload: Partial<Omit<Ingredient, 'id' | 'created_at'>>
-): Promise<void> {
-  const { error } = await supabase
+export async function getIngredients(): Promise<IngredientWithStatus[]> {
+  const { data, error } = await supabase
     .from('ingredients')
-    .update(payload)
-    .eq('id', id)
+    .select('*')
+    .order('name')
   if (error) throw error
+
+  return (data as Ingredient[]).map(i => ({
+    ...i,
+    stock_value: Math.round(i.stock_current * i.cost_unit * 100) / 100,
+    status: i.stock_current <= i.stock_min
+      ? 'critical'
+      : i.stock_current <= i.stock_min * 1.5
+      ? 'warning'
+      : 'ok',
+  }))
 }
 
 export async function deleteIngredient(id: string): Promise<void> {
