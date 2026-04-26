@@ -100,13 +100,21 @@ export async function getMovements(limit = 50): Promise<Movement[]> {
 // ─── DASHBOARD ───────────────────────────────────────────────
 
 export async function getDashboardStats(): Promise<DashboardStats> {
-  const [ingredientsRes, movementsRes] = await Promise.all([
-    supabase.from('v_stock_status').select('*'),
+  const [ingredients, movementsRes] = await Promise.all([
+    getIngredients(),
     supabase.from('v_movements').select('*').limit(20),
   ])
-  if (ingredientsRes.error) throw ingredientsRes.error
   if (movementsRes.error) throw movementsRes.error
 
+  return {
+    ingredients,
+    movements: movementsRes.data as Movement[],
+    totalValue: ingredients.reduce((acc, i) => acc + (i.stock_value || 0), 0),
+    critical: ingredients.filter(i => i.status === 'critical'),
+    warning: ingredients.filter(i => i.status === 'warning'),
+    totalIngredients: ingredients.length,
+  }
+}
   const ingredients = ingredientsRes.data as IngredientWithStatus[]
   return {
     ingredients,
