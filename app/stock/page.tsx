@@ -206,8 +206,9 @@ export default function StockPage() {
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900 truncate">{m.ingredient_name}</p>
                         <p className="text-xs text-gray-400">
-                          {meta.label}{m.reason && m.reason !== 'consumo' ? ` — ${m.reason.replace('_', ' ')}` : ''}
-                          {m.total_cost ? ` — ${fmtCurrency(m.total_cost)}` : ''}
+                          {meta.label}{m.movement_type === 'consumption' && (m as any).turno ? ` — ${(m as any).turno === 'mediodia' ? '☀️ Mediodía' : '🌙 Noche'}` : ''}
+{m.reason && m.reason !== 'consumo' && m.movement_type !== 'consumption' ? ` — ${m.reason.replace('_', ' ')}` : ''}
+{m.total_cost ? ` — ${fmtCurrency(m.total_cost)}` : ''}
                         </p>
                       </div>
                       <div className="text-right flex-shrink-0">
