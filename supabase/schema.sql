@@ -1,11 +1,10 @@
 -- ============================================================
--- PANINO — Sistema de Control de Stock
--- Supabase / PostgreSQL
+-- PANINO v2 — Schema completo
 -- Correr en: Supabase Dashboard → SQL Editor → New Query
 -- ============================================================
 
 -- ============================================================
--- 1. TABLA: ingredients
+-- TABLAS BASE
 -- ============================================================
 CREATE TABLE IF NOT EXISTS ingredients (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -17,9 +16,6 @@ CREATE TABLE IF NOT EXISTS ingredients (
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- ============================================================
--- 2. TABLA: purchases
--- ============================================================
 CREATE TABLE IF NOT EXISTS purchases (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   ingredient_id UUID NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
@@ -31,9 +27,6 @@ CREATE TABLE IF NOT EXISTS purchases (
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- ============================================================
--- 3. TABLA: stock_adjustments
--- ============================================================
 DO $$ BEGIN
   CREATE TYPE adjustment_type AS ENUM ('add', 'subtract');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -52,9 +45,6 @@ CREATE TABLE IF NOT EXISTS stock_adjustments (
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- ============================================================
--- 4. TABLA: stock_checks
--- ============================================================
 CREATE TABLE IF NOT EXISTS stock_checks (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   ingredient_id   UUID NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
@@ -67,7 +57,19 @@ CREATE TABLE IF NOT EXISTS stock_checks (
 );
 
 -- ============================================================
--- TRIGGER: Actualizar stock al registrar una COMPRA
+-- NUEVA TABLA: consumos
+-- Registra uso real de ingredientes en producción
+-- ============================================================
+CREATE TABLE IF NOT EXISTS consumptions (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  ingredient_id UUID NOT NULL REFERENCES ingredients(id) ON DELETE CASCADE,
+  quantity      NUMERIC(10,3) NOT NULL CHECK (quantity > 0),
+  notes         TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ============================================================
+-- TRIGGERS
 -- ============================================================
 CREATE OR REPLACE FUNCTION fn_purchase_update_stock()
 RETURNS TRIGGER AS $$
@@ -76,18 +78,15 @@ DECLARE
   v_current_cost  NUMERIC;
   v_new_cost      NUMERIC;
 BEGIN
-  SELECT stock_current, cost_unit
-  INTO v_current_stock, v_current_cost
-  FROM ingredients
-  WHERE id = NEW.ingredient_id;
+  SELECT stock_current, cost_unit INTO v_current_stock, v_current_cost
+  FROM ingredients WHERE id = NEW.ingredient_id;
 
   IF NEW.total_cost = 0 AND NEW.unit_price > 0 THEN
     NEW.total_cost := NEW.unit_price * NEW.quantity;
   END IF;
 
   IF (v_current_stock + NEW.quantity) > 0 THEN
-    v_new_cost := (v_current_stock * v_current_cost + NEW.total_cost)
-                / (v_current_stock + NEW.quantity);
+    v_new_cost := (v_current_stock * v_current_cost + NEW.total_cost) / (v_current_stock + NEW.quantity);
   ELSE
     v_new_cost := CASE WHEN NEW.quantity > 0 THEN NEW.total_cost / NEW.quantity ELSE 0 END;
   END IF;
@@ -106,18 +105,14 @@ CREATE TRIGGER trg_purchase_update_stock
 AFTER INSERT ON purchases
 FOR EACH ROW EXECUTE FUNCTION fn_purchase_update_stock();
 
--- ============================================================
--- TRIGGER: Actualizar stock al registrar un AJUSTE
--- ============================================================
+-- ─────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION fn_adjustment_update_stock()
 RETURNS TRIGGER AS $$
 BEGIN
   IF NEW.type = 'add' THEN
-    UPDATE ingredients SET stock_current = stock_current + NEW.quantity
-    WHERE id = NEW.ingredient_id;
+    UPDATE ingredients SET stock_current = stock_current + NEW.quantity WHERE id = NEW.ingredient_id;
   ELSIF NEW.type = 'subtract' THEN
-    UPDATE ingredients SET stock_current = GREATEST(stock_current - NEW.quantity, 0)
-    WHERE id = NEW.ingredient_id;
+    UPDATE ingredients SET stock_current = GREATEST(stock_current - NEW.quantity, 0) WHERE id = NEW.ingredient_id;
   END IF;
   RETURN NEW;
 END;
@@ -128,32 +123,41 @@ CREATE TRIGGER trg_adjustment_update_stock
 AFTER INSERT ON stock_adjustments
 FOR EACH ROW EXECUTE FUNCTION fn_adjustment_update_stock();
 
+-- ─────────────────────────────────────────────
+-- Trigger: consumo resta stock
+CREATE OR REPLACE FUNCTION fn_consumption_update_stock()
+RETURNS TRIGGER AS $$
+BEGIN
+  UPDATE ingredients
+  SET stock_current = GREATEST(stock_current - NEW.quantity, 0)
+  WHERE id = NEW.ingredient_id;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trg_consumption_update_stock ON consumptions;
+CREATE TRIGGER trg_consumption_update_stock
+AFTER INSERT ON consumptions
+FOR EACH ROW EXECUTE FUNCTION fn_consumption_update_stock();
+
 -- ============================================================
--- FUNCIÓN: Ajuste automático desde control parcial
+-- FUNCIÓN: Ajuste desde control parcial
 -- ============================================================
 CREATE OR REPLACE FUNCTION fn_apply_stock_check(p_check_id UUID)
 RETURNS VOID AS $$
-DECLARE
-  v_check stock_checks%ROWTYPE;
+DECLARE v_check stock_checks%ROWTYPE;
 BEGIN
   SELECT * INTO v_check FROM stock_checks WHERE id = p_check_id;
+  IF v_check.adjusted THEN RAISE EXCEPTION 'Este conteo ya fue ajustado.'; END IF;
 
-  IF v_check.adjusted THEN
-    RAISE EXCEPTION 'Este conteo ya fue ajustado.';
-  END IF;
-
-  UPDATE ingredients
-  SET stock_current = v_check.real_quantity
-  WHERE id = v_check.ingredient_id;
-
+  UPDATE ingredients SET stock_current = v_check.real_quantity WHERE id = v_check.ingredient_id;
   UPDATE stock_checks SET adjusted = TRUE WHERE id = p_check_id;
 
   INSERT INTO stock_adjustments (ingredient_id, type, quantity, reason, notes)
   VALUES (
     v_check.ingredient_id,
     CASE WHEN v_check.difference >= 0 THEN 'add' ELSE 'subtract' END,
-    ABS(v_check.difference),
-    'ajuste',
+    ABS(v_check.difference), 'ajuste',
     'Ajuste automático desde control parcial #' || p_check_id
   );
 END;
@@ -162,6 +166,8 @@ $$ LANGUAGE plpgsql;
 -- ============================================================
 -- VISTAS
 -- ============================================================
+
+-- Stock con semáforo
 CREATE OR REPLACE VIEW v_stock_status AS
 SELECT
   id, name, unit, stock_current, stock_min, cost_unit,
@@ -174,61 +180,97 @@ SELECT
   created_at
 FROM ingredients
 ORDER BY
-  CASE WHEN stock_current <= stock_min THEN 0 WHEN stock_current <= stock_min * 1.5 THEN 1 ELSE 2 END,
-  name;
+  CASE WHEN stock_current <= stock_min THEN 0 WHEN stock_current <= stock_min * 1.5 THEN 1 ELSE 2 END, name;
 
+-- Historial unificado de movimientos
 CREATE OR REPLACE VIEW v_movements AS
-SELECT
-  'purchase' AS movement_type, p.id, p.ingredient_id,
-  i.name AS ingredient_name, i.unit, p.quantity,
-  p.total_cost, NULL::TEXT AS reason, p.created_at
+SELECT 'purchase' AS movement_type, p.id, p.ingredient_id,
+       i.name AS ingredient_name, i.unit, p.quantity,
+       p.total_cost, NULL::TEXT AS reason, p.created_at
 FROM purchases p JOIN ingredients i ON i.id = p.ingredient_id
 UNION ALL
-SELECT
-  'adjustment', a.id, a.ingredient_id,
-  i.name, i.unit,
-  CASE WHEN a.type = 'subtract' THEN -a.quantity ELSE a.quantity END,
-  NULL, a.reason::TEXT, a.created_at
+SELECT 'adjustment', a.id, a.ingredient_id,
+       i.name, i.unit,
+       CASE WHEN a.type = 'subtract' THEN -a.quantity ELSE a.quantity END,
+       NULL, a.reason::TEXT, a.created_at
 FROM stock_adjustments a JOIN ingredients i ON i.id = a.ingredient_id
+UNION ALL
+SELECT 'consumption', c.id, c.ingredient_id,
+       i.name, i.unit, -c.quantity,
+       ROUND(c.quantity * i.cost_unit, 2), 'consumo', c.created_at
+FROM consumptions c JOIN ingredients i ON i.id = c.ingredient_id
 ORDER BY created_at DESC;
 
-CREATE OR REPLACE VIEW v_problematic_ingredients AS
+-- ============================================================
+-- VISTAS DE REPORTES
+-- ============================================================
+
+-- Reporte: compras por período (agrupado por día)
+CREATE OR REPLACE VIEW v_report_purchases_daily AS
+SELECT
+  DATE(created_at AT TIME ZONE 'America/Argentina/Buenos_Aires') AS day,
+  COUNT(*) AS purchase_count,
+  SUM(total_cost) AS total_spent,
+  SUM(quantity) AS total_units
+FROM purchases
+GROUP BY 1 ORDER BY 1 DESC;
+
+-- Reporte: consumos por ingrediente (últimos 30 días)
+CREATE OR REPLACE VIEW v_report_consumption_by_ingredient AS
 SELECT
   i.id, i.name, i.unit,
-  COUNT(a.id) AS adjustment_count,
-  SUM(CASE WHEN a.type = 'subtract' THEN a.quantity ELSE 0 END) AS total_loss
+  COALESCE(SUM(c.quantity), 0) AS total_consumed,
+  COALESCE(SUM(c.quantity * i.cost_unit), 0) AS total_cost,
+  COUNT(c.id) AS movement_count
 FROM ingredients i
-LEFT JOIN stock_adjustments a ON a.ingredient_id = i.id AND a.created_at > NOW() - INTERVAL '30 days'
+LEFT JOIN consumptions c ON c.ingredient_id = i.id
+  AND c.created_at > NOW() - INTERVAL '30 days'
 GROUP BY i.id, i.name, i.unit
-HAVING COUNT(a.id) > 0
-ORDER BY adjustment_count DESC;
+ORDER BY total_consumed DESC;
+
+-- Reporte: mermas por ingrediente (últimos 30 días)
+CREATE OR REPLACE VIEW v_report_waste_by_ingredient AS
+SELECT
+  i.id, i.name, i.unit,
+  COALESCE(SUM(a.quantity), 0) AS total_waste,
+  COALESCE(SUM(a.quantity * i.cost_unit), 0) AS waste_cost,
+  COUNT(a.id) AS adjustment_count
+FROM ingredients i
+LEFT JOIN stock_adjustments a ON a.ingredient_id = i.id
+  AND a.type = 'subtract'
+  AND a.reason IN ('merma', 'vencimiento')
+  AND a.created_at > NOW() - INTERVAL '30 days'
+GROUP BY i.id, i.name, i.unit
+ORDER BY waste_cost DESC;
+
+-- Reporte: movimientos diarios agrupados
+CREATE OR REPLACE VIEW v_report_daily_summary AS
+SELECT
+  DATE(created_at AT TIME ZONE 'America/Argentina/Buenos_Aires') AS day,
+  SUM(CASE WHEN movement_type = 'purchase' THEN total_cost ELSE 0 END) AS purchased,
+  SUM(CASE WHEN movement_type = 'consumption' THEN ABS(total_cost) ELSE 0 END) AS consumed_cost,
+  SUM(CASE WHEN movement_type = 'adjustment' AND quantity < 0 THEN 1 ELSE 0 END) AS adjustments_count,
+  COUNT(*) AS total_movements
+FROM v_movements
+GROUP BY 1 ORDER BY 1 DESC;
 
 -- ============================================================
--- RLS (Row Level Security)
+-- RLS
 -- ============================================================
-ALTER TABLE ingredients ENABLE ROW LEVEL SECURITY;
-ALTER TABLE purchases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ingredients      ENABLE ROW LEVEL SECURITY;
+ALTER TABLE purchases        ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stock_adjustments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE stock_checks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE stock_checks     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE consumptions     ENABLE ROW LEVEL SECURITY;
 
-DO $$ BEGIN
-  CREATE POLICY "authenticated_all" ON ingredients FOR ALL TO authenticated USING (true);
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
-DO $$ BEGIN
-  CREATE POLICY "authenticated_all" ON purchases FOR ALL TO authenticated USING (true);
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
-DO $$ BEGIN
-  CREATE POLICY "authenticated_all" ON stock_adjustments FOR ALL TO authenticated USING (true);
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
-
-DO $$ BEGIN
-  CREATE POLICY "authenticated_all" ON stock_checks FOR ALL TO authenticated USING (true);
-EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "authenticated_all" ON ingredients      FOR ALL TO authenticated USING (true); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "authenticated_all" ON purchases        FOR ALL TO authenticated USING (true); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "authenticated_all" ON stock_adjustments FOR ALL TO authenticated USING (true); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "authenticated_all" ON stock_checks     FOR ALL TO authenticated USING (true); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+DO $$ BEGIN CREATE POLICY "authenticated_all" ON consumptions     FOR ALL TO authenticated USING (true); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ============================================================
--- SEED — datos de ejemplo
+-- SEED
 -- ============================================================
 INSERT INTO ingredients (name, unit, stock_current, stock_min, cost_unit) VALUES
   ('Harina 000',       'kg',      25.5,  10.0,  850.00),

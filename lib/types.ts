@@ -1,16 +1,8 @@
-// ============================================================
-// TIPOS DE STOCK
-// ============================================================
 export type Unit = 'kg' | 'unidad' | 'litro' | 'gramo' | 'ml'
 export type StockStatus = 'critical' | 'warning' | 'ok'
 export type AdjustmentType = 'add' | 'subtract'
-export type AdjustmentReason =
-  | 'merma'
-  | 'error'
-  | 'uso_interno'
-  | 'ajuste'
-  | 'vencimiento'
-  | 'otro'
+export type AdjustmentReason = 'merma' | 'error' | 'uso_interno' | 'ajuste' | 'vencimiento' | 'otro'
+export type MovementType = 'purchase' | 'adjustment' | 'consumption'
 
 export interface Ingredient {
   id: string
@@ -59,8 +51,16 @@ export interface StockCheck {
   created_at: string
 }
 
+export interface Consumption {
+  id: string
+  ingredient_id: string
+  quantity: number
+  notes?: string
+  created_at: string
+}
+
 export interface Movement {
-  movement_type: 'purchase' | 'adjustment'
+  movement_type: MovementType
   id: string
   ingredient_id: string
   ingredient_name: string
@@ -71,23 +71,31 @@ export interface Movement {
   created_at: string
 }
 
-// ============================================================
-// TIPOS DE CONTENIDO SOCIAL (extraído de libretos_redes_panino)
-// ============================================================
-export type ContentFormat =
-  | 'hook'       // Gancho de barrio
-  | 'detras'     // Detrás del mostrador
-  | 'social'     // Prueba social / testimonios
-  | 'producto'   // Producto con contexto
+// Reportes
+export interface DailySummary {
+  day: string
+  purchased: number
+  consumed_cost: number
+  adjustments_count: number
+  total_movements: number
+}
 
-export interface ContentScript {
+export interface ConsumptionByIngredient {
   id: string
-  format: ContentFormat
-  title: string
-  duration: string      // "30 seg", "45 seg", etc.
-  script: string        // El libreto completo
-  tip: string           // El tip de por qué funciona
-  scheduled_day?: 'lunes' | 'miercoles' | 'viernes'
+  name: string
+  unit: Unit
+  total_consumed: number
+  total_cost: number
+  movement_count: number
+}
+
+export interface WasteByIngredient {
+  id: string
+  name: string
+  unit: Unit
+  total_waste: number
+  waste_cost: number
+  adjustment_count: number
 }
 
 export interface DashboardStats {

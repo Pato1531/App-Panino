@@ -3,8 +3,8 @@ import Link from 'next/link'
 import '../styles/globals.css'
 
 export const metadata: Metadata = {
-  title: 'Panino — Sistema de Gestión',
-  description: 'Control de stock y contenido para Panino',
+  title: 'Panino — Gestión',
+  description: 'Control de stock para Panino',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -14,7 +14,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <nav className="bg-white border-b border-gray-100 sticky top-0 z-40">
           <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center text-white font-bold text-sm select-none">
+              {/* Logo: P negro fondo blanco con borde */}
+              <div className="w-8 h-8 bg-white border-2 border-gray-900 rounded-lg flex items-center justify-center font-bold text-sm text-gray-900 select-none">
                 P
               </div>
               <span className="text-sm font-semibold text-gray-900">Panino</span>
@@ -22,7 +23,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
             <div className="flex items-center gap-1">
               <NavLink href="/stock">📦 Stock</NavLink>
-              <NavLink href="/social">📱 Redes</NavLink>
+              <NavLink href="/reportes">📊 Reportes</NavLink>
             </div>
           </div>
         </nav>
@@ -37,11 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 function NavLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link
-      href={href}
-      className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900
-                 hover:bg-gray-100 rounded-lg transition-colors"
-    >
+    <Link href={href} className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
       {children}
     </Link>
   )
