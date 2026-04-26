@@ -205,3 +205,11 @@ export async function getReportPurchasesTotal(
   const total = (data || []).reduce((acc, r) => acc + (r.total_cost || 0), 0)
   return { total, count: data?.length || 0 }
 }
+export async function getReportTurno(days = 30): Promise<any[]> {
+  const { data, error } = await supabase
+    .from('v_report_turno')
+    .select('*')
+    .limit(days * 2)
+  if (error) throw error
+  return data || []
+}
