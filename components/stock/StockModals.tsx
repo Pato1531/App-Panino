@@ -17,9 +17,7 @@ export function PurchaseModal({ ingredients, onClose, onSuccess }: {
   const [confirmed, setConfirmed] = useState<{ name: string; quantity: number; unit: string } | null>(null)
 
   const selected = ingredients.find(i => i.id === form.ingredient_id)
-  const total = form.quantity && form.unit_price
-    ? parseFloat(form.quantity) * parseFloat(form.unit_price)
-    : null
+  const total = form.quantity && form.unit_price ? parseFloat(form.quantity) * parseFloat(form.unit_price) : null
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   async function handleSubmit() {
@@ -33,21 +31,11 @@ export function PurchaseModal({ ingredients, onClose, onSuccess }: {
         total_cost: total || 0,
         supplier: form.supplier || undefined,
       })
-      // Mostrar confirmación con destino
-      setConfirmed({
-        name: selected!.name,
-        quantity: parseFloat(form.quantity),
-        unit: selected!.unit,
-      })
+      setConfirmed({ name: selected!.name, quantity: parseFloat(form.quantity), unit: selected!.unit })
       onSuccess()
-    } catch (e: any) {
-      setError(e.message)
-    } finally {
-      setLoading(false)
-    }
+    } catch (e: any) { setError(e.message) } finally { setLoading(false) }
   }
 
-  // Pantalla de confirmación
   if (confirmed) return (
     <Modal title="✅ Compra registrada" onClose={onClose}>
       <div className="space-y-4">
@@ -56,22 +44,10 @@ export function PurchaseModal({ ingredients, onClose, onSuccess }: {
           <p className="text-sm font-semibold text-blue-900 mb-1">
             {fmt(confirmed.quantity)} {confirmed.unit} de <strong>{confirmed.name}</strong>
           </p>
-          <p className="text-sm text-blue-700">
-            fueron agregados al <strong>Freezer</strong>
-          </p>
-          <p className="text-xs text-blue-500 mt-2">
-            Recordá mover al cajón cuando lo necesites
-          </p>
+          <p className="text-sm text-blue-700">fueron agregados al <strong>Freezer</strong></p>
+          <p className="text-xs text-blue-500 mt-2">Hacé un Pase cuando lo necesites en el cajón</p>
         </div>
-
-        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
-          💡 <strong>Tip:</strong> Usá "Ajuste" para pasar mercadería del freezer al cajón
-        </div>
-
-        <button onClick={onClose}
-          className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-lg py-2.5 text-sm transition-colors">
-          Entendido
-        </button>
+        <button onClick={onClose} className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-lg py-2.5 text-sm transition-colors">Entendido</button>
       </div>
     </Modal>
   )
@@ -79,23 +55,17 @@ export function PurchaseModal({ ingredients, onClose, onSuccess }: {
   return (
     <Modal title="➕ Registrar Compra" onClose={onClose}>
       <div className="space-y-4">
-        {/* Aviso destino */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 flex items-center gap-2">
           <span className="text-lg">🧊</span>
           <p className="text-xs text-blue-700">Las compras se registran automáticamente en el <strong>Freezer</strong></p>
         </div>
-
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Ingrediente *</label>
           <select className="input-base" value={form.ingredient_id} onChange={e => set('ingredient_id', e.target.value)}>
             <option value="">Seleccionar...</option>
-            {ingredients.map(i => (
-              <option key={i.id} value={i.id}>{i.name} — {fmt(i.stock_current)} {i.unit}</option>
-            ))}
+            {ingredients.map(i => <option key={i.id} value={i.id}>{i.name} — {fmt(i.stock_current)} {i.unit}</option>)}
           </select>
         </div>
-
-        {/* Stock actual por ubicación */}
         {selected && (
           <div className="grid grid-cols-3 gap-2">
             <div className="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2 text-center">
@@ -112,38 +82,25 @@ export function PurchaseModal({ ingredients, onClose, onSuccess }: {
             </div>
           </div>
         )}
-
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="block text-xs font-medium text-gray-600 mb-1">
-              Cantidad {selected ? `(${selected.unit})` : ''} *
-            </label>
-            <input type="number" min="0" step="0.001" className="input-base"
-              value={form.quantity} onChange={e => set('quantity', e.target.value)} placeholder="0.00" />
+            <label className="block text-xs font-medium text-gray-600 mb-1">Cantidad {selected ? `(${selected.unit})` : ''} *</label>
+            <input type="number" min="0" step="0.001" className="input-base" value={form.quantity} onChange={e => set('quantity', e.target.value)} placeholder="0.00" />
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">Precio unitario ($)</label>
-            <input type="number" min="0" step="0.01" className="input-base"
-              value={form.unit_price} onChange={e => set('unit_price', e.target.value)} placeholder="0.00" />
+            <input type="number" min="0" step="0.01" className="input-base" value={form.unit_price} onChange={e => set('unit_price', e.target.value)} placeholder="0.00" />
           </div>
         </div>
-
         {total !== null && total > 0 && (
-          <div className="bg-blue-50 rounded-lg px-4 py-2 text-sm text-blue-700">
-            Total: <strong>{fmtCurrency(total)}</strong>
-          </div>
+          <div className="bg-blue-50 rounded-lg px-4 py-2 text-sm text-blue-700">Total: <strong>{fmtCurrency(total)}</strong></div>
         )}
-
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Proveedor</label>
-          <input type="text" className="input-base" value={form.supplier}
-            onChange={e => set('supplier', e.target.value)} placeholder="Opcional" />
+          <input type="text" className="input-base" value={form.supplier} onChange={e => set('supplier', e.target.value)} placeholder="Opcional" />
         </div>
-
         {error && <p className="text-red-500 text-xs">{error}</p>}
-
-        <button onClick={handleSubmit} disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-lg py-2.5 text-sm transition-colors">
+        <button onClick={handleSubmit} disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-lg py-2.5 text-sm transition-colors">
           {loading ? 'Guardando...' : '🧊 Confirmar compra → Freezer'}
         </button>
       </div>
@@ -153,6 +110,7 @@ export function PurchaseModal({ ingredients, onClose, onSuccess }: {
 
 // ─── AJUSTE ──────────────────────────────────────────────────
 const REASONS: AdjustmentReason[] = ['merma', 'error', 'uso_interno', 'ajuste', 'vencimiento', 'otro']
+type UbicacionAjuste = 'cajon' | 'freezer' | 'total'
 
 export function AdjustModal({ ingredients, onClose, onSuccess, defaultIngredientId }: {
   ingredients: IngredientWithStatus[]
@@ -162,60 +120,110 @@ export function AdjustModal({ ingredients, onClose, onSuccess, defaultIngredient
 }) {
   const [form, setForm] = useState({
     ingredient_id: defaultIngredientId || '',
-    type: 'subtract' as 'add' | 'subtract',
-    quantity: '',
-    reason: 'ajuste' as AdjustmentReason,
-    notes: '',
+    type:          'subtract' as 'add' | 'subtract',
+    ubicacion:     'cajon' as UbicacionAjuste,
+    quantity:      '',
+    reason:        'ajuste' as AdjustmentReason,
+    notes:         '',
   })
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const selected = ingredients.find(i => i.id === form.ingredient_id)
-  const preview = selected && form.quantity
-    ? Math.max(0, selected.stock_current + (form.type === 'add' ? 1 : -1) * parseFloat(form.quantity))
+  const [error, setError]     = useState('')
+  const [confirmed, setConfirmed] = useState<{ name: string; quantity: number; unit: string; type: string; ubicacion: string } | null>(null)
+
+  const selected     = ingredients.find(i => i.id === form.ingredient_id)
+  const stockCajon   = (selected as any)?.stock_cajon   ?? 0
+  const stockFreezer = (selected as any)?.stock_freezer ?? 0
+  const qty          = parseFloat(form.quantity) || 0
+
+  // Stock disponible según ubicación elegida
+  const stockDisponible =
+    form.ubicacion === 'cajon' ? stockCajon :
+    form.ubicacion === 'freezer' ? stockFreezer :
+    selected?.stock_current ?? 0
+
+  const preview = selected && qty > 0
+    ? Math.max(0, stockDisponible + (form.type === 'add' ? 1 : -1) * qty)
     : null
+
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   async function handleSubmit() {
     if (!form.ingredient_id || !form.quantity) { setError('Completá los campos requeridos'); return }
+    if (form.type === 'subtract' && qty > stockDisponible) {
+      setError(`No hay suficiente en ${form.ubicacion === 'cajon' ? 'el cajón' : form.ubicacion === 'freezer' ? 'el freezer' : 'stock'} (disponible: ${fmt(stockDisponible)} ${selected?.unit})`)
+      return
+    }
     setLoading(true); setError('')
     try {
       await createAdjustment({
         ingredient_id: form.ingredient_id,
-        type: form.type,
-        quantity: parseFloat(form.quantity),
-        reason: form.reason,
-        notes: form.notes || undefined,
+        type:          form.type,
+        quantity:      qty,
+        reason:        form.reason,
+        notes:         form.notes || undefined,
+        ubicacion:     form.ubicacion,
+      } as any)
+      setConfirmed({
+        name:      selected!.name,
+        quantity:  qty,
+        unit:      selected!.unit,
+        type:      form.type,
+        ubicacion: form.ubicacion,
       })
-      onSuccess(); onClose()
+      onSuccess()
     } catch (e: any) { setError(e.message) } finally { setLoading(false) }
   }
+
+  // Confirmación
+  if (confirmed) return (
+    <Modal title="✅ Ajuste aplicado" onClose={onClose}>
+      <div className="space-y-4">
+        <div className={`border rounded-xl p-5 text-center ${confirmed.type === 'subtract' ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
+          <div className="text-3xl mb-2">{confirmed.type === 'subtract' ? '↓' : '↑'}</div>
+          <p className={`text-sm font-semibold mb-1 ${confirmed.type === 'subtract' ? 'text-red-900' : 'text-green-900'}`}>
+            {confirmed.type === 'subtract' ? 'Se restaron' : 'Se sumaron'} {fmt(confirmed.quantity)} {confirmed.unit} de <strong>{confirmed.name}</strong>
+          </p>
+          <p className={`text-sm ${confirmed.type === 'subtract' ? 'text-red-700' : 'text-green-700'}`}>
+            en {confirmed.ubicacion === 'cajon' ? '📦 Cajón' : confirmed.ubicacion === 'freezer' ? '🧊 Freezer' : '📊 Stock total'}
+          </p>
+        </div>
+        <button onClick={onClose} className="w-full bg-gray-900 hover:bg-gray-800 text-white font-medium rounded-lg py-2.5 text-sm transition-colors">Entendido</button>
+      </div>
+    </Modal>
+  )
 
   return (
     <Modal title="⚡ Ajuste Rápido" onClose={onClose}>
       <div className="space-y-4">
+
+        {/* Ingrediente */}
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Ingrediente *</label>
           <select className="input-base" value={form.ingredient_id} onChange={e => set('ingredient_id', e.target.value)}>
             <option value="">Seleccionar...</option>
-            {ingredients.map(i => (
-              <option key={i.id} value={i.id}>{i.name} — {fmt(i.stock_current)} {i.unit}</option>
-            ))}
+            {ingredients.map(i => <option key={i.id} value={i.id}>{i.name} — {fmt(i.stock_current)} {i.unit}</option>)}
           </select>
         </div>
 
+        {/* Stock por ubicación */}
         {selected && (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-3 gap-2">
             <div className="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2 text-center">
               <p className="text-xs text-orange-600 mb-0.5">📦 Cajón</p>
-              <p className="text-sm font-semibold text-orange-800">{fmt((selected as any).stock_cajon ?? 0)} {selected.unit}</p>
+              <p className="text-sm font-semibold text-orange-800">{fmt(stockCajon)} {selected.unit}</p>
             </div>
             <div className="bg-blue-50 border border-blue-100 rounded-lg px-3 py-2 text-center">
               <p className="text-xs text-blue-600 mb-0.5">🧊 Freezer</p>
-              <p className="text-sm font-semibold text-blue-800">{fmt((selected as any).stock_freezer ?? 0)} {selected.unit}</p>
+              <p className="text-sm font-semibold text-blue-800">{fmt(stockFreezer)} {selected.unit}</p>
+            </div>
+            <div className="bg-gray-50 border border-gray-100 rounded-lg px-3 py-2 text-center">
+              <p className="text-xs text-gray-500 mb-0.5">Total</p>
+              <p className="text-sm font-semibold text-gray-800">{fmt(selected.stock_current)} {selected.unit}</p>
             </div>
           </div>
         )}
 
+        {/* Tipo: sumar / restar */}
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-2">Tipo *</label>
           <div className="grid grid-cols-2 gap-2">
@@ -224,7 +232,7 @@ export function AdjustModal({ ingredients, onClose, onSuccess, defaultIngredient
                 className={`py-2 rounded-lg text-sm font-medium border transition-all ${
                   form.type === t
                     ? t === 'subtract' ? 'bg-red-50 border-red-300 text-red-700' : 'bg-green-50 border-green-300 text-green-700'
-                    : 'border-gray-200 text-gray-500'
+                    : 'border-gray-200 text-gray-500 hover:bg-gray-50'
                 }`}>
                 {t === 'subtract' ? '↓ Restar' : '↑ Sumar'}
               </button>
@@ -232,6 +240,24 @@ export function AdjustModal({ ingredients, onClose, onSuccess, defaultIngredient
           </div>
         </div>
 
+        {/* Ubicación */}
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-2">¿Dónde ajustás? *</label>
+          <div className="grid grid-cols-3 gap-2">
+            {([
+              { k: 'cajon',   label: '📦 Cajón',   active: 'bg-orange-50 border-orange-300 text-orange-700' },
+              { k: 'freezer', label: '🧊 Freezer',  active: 'bg-blue-50 border-blue-300 text-blue-700' },
+              { k: 'total',   label: '📊 Total',    active: 'bg-gray-100 border-gray-400 text-gray-700' },
+            ] as { k: UbicacionAjuste; label: string; active: string }[]).map(({ k, label, active }) => (
+              <button key={k} type="button" onClick={() => setForm(f => ({ ...f, ubicacion: k }))}
+                className={`py-2 rounded-lg text-xs font-medium border transition-all ${form.ubicacion === k ? active : 'border-gray-200 text-gray-500 hover:bg-gray-50'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Cantidad + Motivo */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">
@@ -248,14 +274,15 @@ export function AdjustModal({ ingredients, onClose, onSuccess, defaultIngredient
           </div>
         </div>
 
+        {/* Preview */}
         {preview !== null && selected && (
-          <div className={`rounded-lg px-4 py-2 text-sm font-medium ${
-            form.type === 'subtract' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'
-          }`}>
-            Stock resultante: <strong>{fmt(preview)} {selected.unit}</strong>
+          <div className={`rounded-lg px-4 py-2.5 text-sm font-medium ${form.type === 'subtract' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+            {form.ubicacion === 'cajon' ? '📦 Cajón' : form.ubicacion === 'freezer' ? '🧊 Freezer' : '📊 Stock'} quedará:{' '}
+            <strong>{fmt(preview)} {selected.unit}</strong>
           </div>
         )}
 
+        {/* Nota */}
         <div>
           <label className="block text-xs font-medium text-gray-600 mb-1">Nota</label>
           <input type="text" className="input-base" value={form.notes}
@@ -281,10 +308,10 @@ export function CheckModal({ ingredients, onClose, onSuccess, defaultIngredientI
   defaultIngredientId?: string
 }) {
   const [form, setForm] = useState({ ingredient_id: defaultIngredientId || '', real_quantity: '', notes: '' })
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading]   = useState(false)
   const [applying, setApplying] = useState(false)
-  const [error, setError] = useState('')
-  const [saved, setSaved] = useState<StockCheck | null>(null)
+  const [error, setError]       = useState('')
+  const [saved, setSaved]       = useState<StockCheck | null>(null)
   const selected = ingredients.find(i => i.id === form.ingredient_id)
   const diff = selected && form.real_quantity ? parseFloat(form.real_quantity) - selected.stock_current : null
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
@@ -348,16 +375,12 @@ export function CheckModal({ ingredients, onClose, onSuccess, defaultIngredientI
           </div>
         )}
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">
-            Cantidad real contada {selected ? `(${selected.unit})` : ''} *
-          </label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Cantidad real contada {selected ? `(${selected.unit})` : ''} *</label>
           <input type="number" min="0" step="0.001" className="input-base"
             value={form.real_quantity} onChange={e => set('real_quantity', e.target.value)} placeholder="0.00" />
         </div>
         {diff !== null && (
-          <div className={`rounded-lg px-4 py-2 text-sm font-medium ${
-            Math.abs(diff) < 0.01 ? 'bg-green-50 text-green-700' : diff > 0 ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'
-          }`}>
+          <div className={`rounded-lg px-4 py-2 text-sm font-medium ${Math.abs(diff) < 0.01 ? 'bg-green-50 text-green-700' : diff > 0 ? 'bg-blue-50 text-blue-700' : 'bg-red-50 text-red-700'}`}>
             Diferencia: {diff > 0 ? '+' : ''}{fmt(diff)} {selected?.unit}{Math.abs(diff) < 0.01 && ' — ¡Exacto!'}
           </div>
         )}
@@ -382,20 +405,14 @@ const UNITS: Unit[] = ['kg', 'litro', 'unidad', 'gramo', 'ml']
 export function AddIngredientModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const [form, setForm] = useState({ name: '', unit: 'kg' as Unit, stock_current: '', stock_min: '', cost_unit: '' })
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError]     = useState('')
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   async function handleSubmit() {
     if (!form.name) { setError('El nombre es requerido'); return }
     setLoading(true); setError('')
     try {
-      await createIngredient({
-        name: form.name.trim(),
-        unit: form.unit,
-        stock_current: parseFloat(form.stock_current) || 0,
-        stock_min: parseFloat(form.stock_min) || 0,
-        cost_unit: parseFloat(form.cost_unit) || 0,
-      })
+      await createIngredient({ name: form.name.trim(), unit: form.unit, stock_current: parseFloat(form.stock_current) || 0, stock_min: parseFloat(form.stock_min) || 0, cost_unit: parseFloat(form.cost_unit) || 0 })
       onSuccess(); onClose()
     } catch (e: any) { setError(e.message) } finally { setLoading(false) }
   }
@@ -417,11 +434,7 @@ export function AddIngredientModal({ onClose, onSuccess }: { onClose: () => void
           </div>
         </div>
         <div className="grid grid-cols-3 gap-3">
-          {([
-            { k: 'stock_current', l: 'Stock inicial' },
-            { k: 'stock_min', l: 'Stock mínimo' },
-            { k: 'cost_unit', l: 'Costo/unidad ($)' },
-          ]).map(({ k, l }) => (
+          {([{ k: 'stock_current', l: 'Stock inicial' }, { k: 'stock_min', l: 'Stock mínimo' }, { k: 'cost_unit', l: 'Costo/unidad ($)' }]).map(({ k, l }) => (
             <div key={k}>
               <label className="block text-xs font-medium text-gray-600 mb-1">{l}</label>
               <input type="number" min="0" step="0.01" className="input-base"
