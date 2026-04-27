@@ -213,3 +213,13 @@ export async function getReportTurno(days = 30): Promise<any[]> {
   if (error) throw error
   return data || []
 }
+export async function createTransfer(
+  ingredient_id: string,
+  quantity: number,
+  notes?: string
+): Promise<void> {
+  const { error } = await supabase
+    .from('stock_transfers')
+    .insert({ ingredient_id, quantity, notes })
+  if (error) throw error
+}
